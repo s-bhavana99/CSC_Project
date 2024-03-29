@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image</title>
+    <!-- Add Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-gray-800">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center">
+                <img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=white" alt="Logo">
+                <span class="text-white text-lg font-semibold ml-2">CSC Project</span>
+            </div>
+            <!-- Navigation Links -->
+            <div class="hidden sm:block">
+                <ul class="flex space-x-4">
+                    <li>
+                        <a href="base.html" class="text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                    </li>
+                    <li>
+                        <a href="index.html" class="bg-gray-900 text-white rounded-md px-3 py-2 text-sm font-medium" aria-current="page">Register</a>
+                    </li>
+                    <li>
+                        <a href="check.html" class="text-white hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Authenticate</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto py-8 px-4 flex justify-center items-center">
+        <div class="w-full sm:max-w-md">
+            <h1 class="text-2xl font-bold mb-4">Upload Image</h1>
+            <form id="uploadForm" enctype="multipart/form-data" class="mb-4">
+                <input type="file" id="fileInput" name="fileInput" accept="image/*" class="mb-2 hidden">
+                <input type="text" id="personName" name="personName" placeholder="Person's Name" required class="w-full mb-2 p-2 border border-gray-300 rounded">
+                <input type="radio" id="fileRadio" name="source" value="file" checked class="mr-2">
+                <label for="fileRadio">Upload from Files</label>
+                <input type="radio" id="cameraRadio" name="source" value="camera" class="mr-2 ml-4">
+                <label for="cameraRadio">Take a Photo</label>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload Image</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const personName = document.getElementById('personName').value;
+            let file;
+
+            if (document.getElementById('fileRadio').checked) {
+                file = document.getElementById('fileInput').files[0];
+            } else {
+                const captureCanvas = document.createElement('canvas');
+                const context = captureCanvas.getContext('2d');
+
+                captureCanvas.width = video.videoWidth;
+                captureCanvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+                const imageDataURL = captureCanvas.toDataURL('image/jpeg');
+
+                file = dataURLtoFile(imageDataURL, 'captured_image.jpeg');
+
+                // Clean up
+                video.remove();
+                captureCanvas.remove();
+            }
+
+            if (!file) {
+                alert('Please select an image file or capture a photo.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = async function() {
+                const base64data = reader.result.split(',')[1];
+
+                const requestData = {
+                    image: base64data,
+                    person_name: personName
+                };
+
+                try {
+                    const response = await fetch('https://kqjwyeg1gd.execute-api.us-east-1.amazonaws.com/dev/putimage', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    if (response.ok) {
+                        alert('Image uploaded successfully.');
+                    } else {
+                        const errorMessage = await response.text();
+                        alert(`Error: ${errorMessage}`);
+                    }
+                } catch (error) {
+                    alert('An error occurred while uploading the image.');
+                    console.error(error);
+                }
+            };
+        });
+
+        let video;
+
+        document.getElementById('fileRadio').addEventListener('change', function() {
+            document.getElementById('fileInput').classList.remove('hidden');
+            if (video) {
+                video.remove();
+            }
+        });
+
+        document.getElementById('cameraRadio').addEventListener('change', async function() {
+            document.getElementById('fileInput').classList.add('hidden');
+
+            const constraints = { video: true };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video = document.createElement('video');
+                video.srcObject = stream;
+                video.autoplay = true;
+                document.body.appendChild(video);
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+            }
+        });
+
+        function dataURLtoFile(dataURL, filename) {
+            const arr = dataURL.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, { type: mime });
+        }
+    </script>
+</body>
+</html>
